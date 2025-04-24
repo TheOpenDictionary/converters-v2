@@ -2,9 +2,9 @@ use console::Term;
 use flate2::read::GzDecoder;
 use rayon::prelude::*;
 use regex::Regex;
-use std::io::Read;
+use std::io::{Cursor, Read};
 
-use crate::{progress::STYLE_PROGRESS, traits::Extractor};
+use crate::{processors::traits::Extractor, progress::STYLE_PROGRESS};
 
 use super::schema::CEDictEntry;
 
@@ -13,11 +13,11 @@ pub struct CEDictExtractor {}
 impl Extractor for CEDictExtractor {
     type Entry = CEDictEntry;
 
-    fn extract(&self, term: &Term, data: &str) -> anyhow::Result<Vec<CEDictEntry>> {
+    fn extract(&self, term: &Term, data: &Vec<u8>) -> anyhow::Result<Vec<CEDictEntry>> {
         term.write_line("🔍 Extracting the dictionary...")?;
 
         // First, we need to decompress the gzipped data
-        let mut decoder = GzDecoder::new(data.as_bytes());
+        let mut decoder = GzDecoder::new(Cursor::new(data));
         let mut decompressed = String::new();
         decoder.read_to_string(&mut decompressed)?;
 
@@ -66,5 +66,12 @@ impl Extractor for CEDictExtractor {
         term.write_line("✅ Extraction complete")?;
 
         Ok(results)
+    }
+
+    fn new() -> anyhow::Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Self {})
     }
 }

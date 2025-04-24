@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{progress::STYLE_PROGRESS, traits::Converter, wiktionary::consts::POS_MAP};
+use crate::{processors::traits::Converter, progress::STYLE_PROGRESS};
 use console::Term;
 use map_macro::hash_map;
 use odict::{
@@ -8,19 +8,13 @@ use odict::{
     PartOfSpeech, Sense,
 };
 
-use super::schema::WiktionaryEntry;
+use super::{consts::POS_MAP, schema::WiktionaryEntry};
 
 pub struct WiktionaryConverter {
     missing_pos: Vec<String>,
 }
 
 impl WiktionaryConverter {
-    pub fn new() -> Self {
-        Self {
-            missing_pos: vec![],
-        }
-    }
-
     fn resolve_pos<'a>(&mut self, entry: &WiktionaryEntry) -> PartOfSpeech {
         let mut pos = PartOfSpeech::un;
 
@@ -166,6 +160,15 @@ impl Converter for WiktionaryConverter {
             id: ID::new(),
             name: None,
             entries,
+        })
+    }
+
+    fn new() -> anyhow::Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Self {
+            missing_pos: vec![],
         })
     }
 }

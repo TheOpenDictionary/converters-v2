@@ -1,17 +1,16 @@
 use std::path::PathBuf;
 
-use cedict::{CEDictArgs, CEDictConverter, CEDictDownloader, CEDictExtractor};
-use clap::{Parser, Subcommand, command};
+use self::commands::Commands;
+use clap::{Parser, command};
 use console::Term;
-use traits::{Converter, Downloader, Extractor};
+use processors::{CEDictProcessor, Processor, WiktionaryProcessor};
 use utils::save_dictionary;
-use wiktionary::{WiktionaryArgs, WiktionaryConverter, WiktionaryDownloader, WiktionaryExtractor};
 
-mod cedict;
+mod args;
+mod commands;
+mod processors;
 mod progress;
-mod traits;
 mod utils;
-mod wiktionary;
 
 #[derive(Debug, Parser)]
 #[command(name = "odict-convert")]
@@ -24,41 +23,28 @@ struct Cli {
     output: Option<String>,
 }
 
-#[derive(Debug, Subcommand)]
-enum Commands {
-    #[command(arg_required_else_help = true)]
-    Wiktionary(WiktionaryArgs),
-    CEDict(CEDictArgs),
-}
-
 #[tokio::main]
 async fn main() {
     let args = Cli::parse();
+    let term = Term::stdout();
+
+    let dictionary = match &args.command {
+        Commands::Wiktionary(wiktionary_args) => WiktionaryProcessor::new()
+            .unwrap()
+            .process(&term, Some(wiktionary_args.language.clone()))
+            .await
+            .unwrap(),
+        Commands::CEDict => CEDictProcessor::new()
+            .unwrap()
+            .process(&term, None)
+            .await
+            .unwrap(),
+    };
 
     let (command_name, language) = match &args.command {
         Commands::Wiktionary(wiktionary_args) => ("wiktionary", wiktionary_args.language.clone()),
-        Commands::CEDict(_) => ("cedict", "zho-eng".to_string()),
+        Commands::CEDict => ("cedict", "zho-eng".to_string()),
     };
-
-    let downloader: Box<dyn Downloader> = match args.command {
-        Commands::Wiktionary(args) => Box::new(WiktionaryDownloader::new(args.language)),
-        Commands::CEDict(_) => Box::new(CEDictDownloader::new()),
-    };
-
-    let extractor: Box<dyn Extractor> = match args.command {
-        Commands::Wiktionary(_) => Box::new(WiktionaryExtractor::new()),
-        Commands::CEDict(_) => Box::new(CEDictExtractor::new()),
-    };
-
-    let mut converter: Box<dyn Converter<Entry = _>> = match args.command {
-        Commands::Wiktionary(_) => Box::new(WiktionaryConverter::new()),
-        Commands::CEDict(_) => Box::new(CEDictConverter::new()),
-    };
-
-    let term = Term::stdout();
-    let text = downloader.download(&term).await.unwrap();
-    let parsed = extractor.extract(&term, &text).unwrap();
-    let dictionary = converter.convert(&term, &parsed).unwrap();
 
     let output_path: PathBuf = match &args.output {
         Some(path) => path.clone().into(),

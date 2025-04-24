@@ -10,15 +10,18 @@ use crate::progress::STYLE_DOWNLOAD;
 
 #[async_trait(?Send)]
 pub trait Downloader {
-    fn new() -> Self;
+    fn new(language: Option<String>) -> anyhow::Result<Self>
+    where
+        Self: Sized;
 
     fn url(&self) -> String;
 
-    async fn download(&self, term: &Term) -> anyhow::Result<String> {
+    async fn download(&self, term: &Term) -> anyhow::Result<Vec<u8>> {
         let url = self.url();
 
         // Create .data directory if it doesn't exist
         let data_dir = PathBuf::from(".data");
+
         if !data_dir.exists() {
             fs::create_dir_all(&data_dir)?;
         }
@@ -38,8 +41,10 @@ pub trait Downloader {
             )?;
 
             let mut file = File::open(&file_path)?;
-            let mut content = String::new();
-            file.read_to_string(&mut content)?;
+            let mut content = Vec::new();
+
+            file.read_to_end(&mut content)?;
+
             return Ok(content);
         }
 
@@ -73,50 +78,51 @@ pub trait Downloader {
         term.write_line("✅ Download complete")?;
 
         // Cache the downloaded content
-        let content_str = String::from_utf8(content.clone())?;
         let mut file = File::create(&file_path)?;
-
         file.write_all(&content)?;
 
-        Ok(content_str)
+        Ok(content)
     }
 }
 
 pub trait Extractor {
     type Entry;
 
-    fn new() -> Self
+    fn new() -> anyhow::Result<Self>
     where
-        Self: Sized,
-    {
-        Self {}
-    }
+        Self: Sized;
 
-    fn extract(&self, term: &Term, data: &str) -> anyhow::Result<Vec<Self::Entry>>;
+    fn extract(&self, term: &Term, data: &Vec<u8>) -> anyhow::Result<Vec<Self::Entry>>;
 }
 
 pub trait Converter {
     type Entry;
 
-    fn new() -> Self {
-        Self {}
-    }
+    fn new() -> anyhow::Result<Self>
+    where
+        Self: Sized;
 
     fn convert(&mut self, term: &Term, data: &Vec<Self::Entry>) -> anyhow::Result<Dictionary>;
 }
 
 pub trait Processor {
+    type Entry;
+
     type Downloader: Downloader;
-    type Extractor: Extractor;
-    type Converter: Converter;
+    type Extractor: Extractor<Entry = Self::Entry>;
+    type Converter: Converter<Entry = Self::Entry>;
 
-    async fn process(term: &Term) -> anyhow::Result<Dictionary> {
-        let downloader = Self::Downloader::new();
-        let extractor = Self::Extractor::new();
-        let converter = Self::Converter::new();
+    fn new() -> anyhow::Result<Self>
+    where
+        Self: Sized;
 
-        let text = downloader.download(term).await?;
-        let parsed = extractor.extract(term, &text)?;
+    async fn process(&self, term: &Term, language: Option<String>) -> anyhow::Result<Dictionary> {
+        let downloader = Self::Downloader::new(language)?;
+        let extractor = Self::Extractor::new()?;
+        let mut converter = Self::Converter::new()?;
+
+        let data = downloader.download(term).await?;
+        let parsed = extractor.extract(term, &data)?;
         let dictionary = converter.convert(term, &parsed)?;
 
         Ok(dictionary)

@@ -2,11 +2,9 @@ use std::collections::HashMap;
 
 use console::Term;
 use map_macro::hash_map;
-use odict::{
-    Definition, DefinitionType, Dictionary, Entry, Etymology, Form, ID, PartOfSpeech, Sense,
-};
+use odict::{Definition, DefinitionType, Dictionary, Entry, Etymology, ID, PartOfSpeech, Sense};
 
-use crate::{progress::STYLE_PROGRESS, traits::Converter};
+use crate::{processors::traits::Converter, progress::STYLE_PROGRESS};
 
 use super::schema::CEDictEntry;
 
@@ -92,5 +90,12 @@ impl Converter for CEDictConverter {
             name: Some("CC-CEDICT".to_string()),
             entries,
         })
+    }
+
+    fn new() -> anyhow::Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Self {})
     }
 }
