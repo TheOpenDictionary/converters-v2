@@ -10,12 +10,6 @@ use super::schema::CEDictEntry;
 
 pub struct CEDictExtractor {}
 
-impl CEDictExtractor {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
 impl Extractor for CEDictExtractor {
     type Entry = CEDictEntry;
 

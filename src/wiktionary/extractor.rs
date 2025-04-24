@@ -7,14 +7,12 @@ use super::schema::WiktionaryEntry;
 
 pub struct WiktionaryExtractor {}
 
-impl WiktionaryExtractor {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
 impl Extractor for WiktionaryExtractor {
     type Entry = WiktionaryEntry;
+
+    fn new() -> Self {
+        Self {}
+    }
 
     fn extract(&self, term: &Term, data: &str) -> anyhow::Result<Vec<WiktionaryEntry>> {
         term.write_line("🔍 Extracting the dictionary...")?;

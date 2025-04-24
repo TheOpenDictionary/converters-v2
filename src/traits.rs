@@ -85,12 +85,22 @@ pub trait Downloader {
 pub trait Extractor {
     type Entry;
 
-    fn new() -> Self;
+    fn new() -> Self
+    where
+        Self: Sized,
+    {
+        Self {}
+    }
+
     fn extract(&self, term: &Term, data: &str) -> anyhow::Result<Vec<Self::Entry>>;
 }
 
 pub trait Converter {
     type Entry;
+
+    fn new() -> Self {
+        Self {}
+    }
 
     fn convert(&mut self, term: &Term, data: &Vec<Self::Entry>) -> anyhow::Result<Dictionary>;
 }

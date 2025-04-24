@@ -12,12 +12,6 @@ use super::schema::CEDictEntry;
 
 pub struct CEDictConverter {}
 
-impl CEDictConverter {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
 impl Converter for CEDictConverter {
     type Entry = CEDictEntry;
 
