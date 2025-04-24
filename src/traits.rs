@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use console::Term;
 use odict::Dictionary;
 use sha2::{Digest, Sha256};
@@ -7,7 +8,10 @@ use std::path::PathBuf;
 
 use crate::progress::STYLE_DOWNLOAD;
 
+#[async_trait(?Send)]
 pub trait Downloader {
+    fn new() -> Self;
+
     fn url(&self) -> String;
 
     async fn download(&self, term: &Term) -> anyhow::Result<String> {
@@ -78,10 +82,33 @@ pub trait Downloader {
     }
 }
 
-pub trait Extractor<Entry> {
-    fn extract(&self, term: &Term, data: &str) -> anyhow::Result<Vec<Entry>>;
+pub trait Extractor {
+    type Entry;
+
+    fn new() -> Self;
+    fn extract(&self, term: &Term, data: &str) -> anyhow::Result<Vec<Self::Entry>>;
 }
 
-pub trait Converter<Entry> {
-    fn convert(&mut self, term: &Term, data: &Vec<Entry>) -> anyhow::Result<Dictionary>;
+pub trait Converter {
+    type Entry;
+
+    fn convert(&mut self, term: &Term, data: &Vec<Self::Entry>) -> anyhow::Result<Dictionary>;
+}
+
+pub trait Processor {
+    type Downloader: Downloader;
+    type Extractor: Extractor;
+    type Converter: Converter;
+
+    async fn process(term: &Term) -> anyhow::Result<Dictionary> {
+        let downloader = Self::Downloader::new();
+        let extractor = Self::Extractor::new();
+        let converter = Self::Converter::new();
+
+        let text = downloader.download(term).await?;
+        let parsed = extractor.extract(term, &text)?;
+        let dictionary = converter.convert(term, &parsed)?;
+
+        Ok(dictionary)
+    }
 }

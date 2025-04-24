@@ -13,7 +13,9 @@ impl WiktionaryExtractor {
     }
 }
 
-impl Extractor<WiktionaryEntry> for WiktionaryExtractor {
+impl Extractor for WiktionaryExtractor {
+    type Entry = WiktionaryEntry;
+
     fn extract(&self, term: &Term, data: &str) -> anyhow::Result<Vec<WiktionaryEntry>> {
         term.write_line("🔍 Extracting the dictionary...")?;
 

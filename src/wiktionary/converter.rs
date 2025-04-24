@@ -40,7 +40,9 @@ impl WiktionaryConverter {
     }
 }
 
-impl Converter<WiktionaryEntry> for WiktionaryConverter {
+impl Converter for WiktionaryConverter {
+    type Entry = WiktionaryEntry;
+
     fn convert(&mut self, term: &Term, data: &Vec<WiktionaryEntry>) -> anyhow::Result<Dictionary> {
         term.write_line("🔄 Converting the dictionary...")?;
 
