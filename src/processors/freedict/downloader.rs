@@ -2,10 +2,9 @@ use anyhow::Context;
 use async_trait::async_trait;
 use console::Term;
 use reqwest::Client;
+use serde_json::{Value, from_slice};
 
 use crate::processors::traits::Downloader;
-
-use super::schema::FreeDictApiEntry;
 
 pub struct FreeDictDownloader {
     language_pair: Option<String>,
@@ -30,47 +29,57 @@ impl Downloader for FreeDictDownloader {
         term.write_line("⬇️ Downloading FreeDict database index...")?;
         let index_data = super::super::traits::Downloader::download(self, term).await?;
 
-        // Parse the JSON data with serde
-        let api_entries: Vec<FreeDictApiEntry> = serde_json::from_slice(&index_data)
-            .context("Failed to parse FreeDict database index")?;
+        // Parse the JSON data
+        let json_data: Vec<Value> =
+            from_slice(&index_data).context("Failed to parse FreeDict database index")?;
 
         // Find the requested dictionary based on language pair
         let client = Client::new();
         let language_pair = self.language_pair.as_deref();
 
-        for entry in &api_entries {
-            // Skip if we're looking for a specific language pair and this isn't it
-            if let Some(requested_pair) = language_pair {
-                if entry.name != requested_pair {
-                    continue;
-                }
-            }
-
-            // Find source releases
-            for release in &entry.releases {
-                if release.platform == "src" {
-                    term.write_line(&format!(
-                        "⬇️ Downloading dictionary for language pair: {}",
-                        entry.name
-                    ))?;
-
-                    // Download the dictionary file
-                    let resp = client
-                        .get(&release.url)
-                        .send()
-                        .await
-                        .context("Failed to download dictionary")?;
-
-                    if !resp.status().is_success() {
-                        anyhow::bail!("Failed to download dictionary: HTTP {}", resp.status());
+        for entry in json_data.iter() {
+            if let Some(name) = entry.get("name").and_then(|n| n.as_str()) {
+                // Skip if we're looking for a specific language pair and this isn't it
+                if let Some(requested_pair) = language_pair {
+                    if name != requested_pair {
+                        continue;
                     }
+                }
 
-                    let dict_data = resp
-                        .bytes()
-                        .await
-                        .context("Failed to read dictionary data")?;
+                if let Some(releases) = entry.get("releases").and_then(|r| r.as_array()) {
+                    for release in releases {
+                        if let Some(platform) = release.get("platform").and_then(|p| p.as_str()) {
+                            if platform == "src" {
+                                if let Some(url) = release.get("URL").and_then(|u| u.as_str()) {
+                                    term.write_line(&format!(
+                                        "⬇️ Downloading dictionary for language pair: {}",
+                                        name
+                                    ))?;
 
-                    return Ok(dict_data.to_vec());
+                                    // Download the dictionary file
+                                    let resp = client
+                                        .get(url)
+                                        .send()
+                                        .await
+                                        .context("Failed to download dictionary")?;
+
+                                    if !resp.status().is_success() {
+                                        anyhow::bail!(
+                                            "Failed to download dictionary: HTTP {}",
+                                            resp.status()
+                                        );
+                                    }
+
+                                    let dict_data = resp
+                                        .bytes()
+                                        .await
+                                        .context("Failed to read dictionary data")?;
+
+                                    return Ok(dict_data.to_vec());
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

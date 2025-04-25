@@ -304,6 +304,7 @@ dependencies = [
  "indicatif",
  "map-macro",
  "odict",
+ "quick-xml",
  "rayon",
  "regex",
  "reqwest",
