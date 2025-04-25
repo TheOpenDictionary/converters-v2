@@ -1,6 +1,6 @@
 use clap::{Subcommand, command};
 
-use crate::args::WiktionaryArgs;
+use crate::args::{FreeDictArgs, WiktionaryArgs};
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
@@ -8,4 +8,6 @@ pub enum Commands {
     Wiktionary(WiktionaryArgs),
     #[command(name = "cedict")]
     CEDict,
+    #[command(name = "freedict")]
+    FreeDict(FreeDictArgs),
 }

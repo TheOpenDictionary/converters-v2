@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use self::commands::Commands;
 use clap::{Parser, command};
 use console::Term;
-use processors::{CEDictProcessor, Processor, WiktionaryProcessor};
+use processors::{CEDictProcessor, FreeDictProcessor, Processor, WiktionaryProcessor};
 use utils::save_dictionary;
 
 mod args;
@@ -39,11 +39,23 @@ async fn main() {
             .process(&term, None)
             .await
             .unwrap(),
+        Commands::FreeDict(freedict_args) => FreeDictProcessor::new()
+            .unwrap()
+            .process(&term, freedict_args.language_pair.clone())
+            .await
+            .unwrap(),
     };
 
     let (command_name, language) = match &args.command {
         Commands::Wiktionary(wiktionary_args) => ("wiktionary", wiktionary_args.language.clone()),
         Commands::CEDict => ("cedict", "zho-eng".to_string()),
+        Commands::FreeDict(freedict_args) => {
+            let language_pair = freedict_args
+                .language_pair
+                .clone()
+                .unwrap_or("all".to_string());
+            ("freedict", language_pair)
+        }
     };
 
     let output_path: PathBuf = match &args.output {
