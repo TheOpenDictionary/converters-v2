@@ -14,10 +14,10 @@ pub trait Downloader {
     where
         Self: Sized;
 
-    fn url(&self) -> String;
+    async fn url(&self) -> anyhow::Result<String>;
 
     async fn download(&self, term: &Term) -> anyhow::Result<Vec<u8>> {
-        let url = self.url();
+        let url = self.url().await?;
 
         // Create .data directory if it doesn't exist
         let data_dir = PathBuf::from(".data");

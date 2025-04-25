@@ -5,7 +5,7 @@ use odict::{Definition, Dictionary, Entry, Etymology, ID};
 
 use crate::{processors::traits::Converter, progress::STYLE_PROGRESS};
 
-use super::schema::FreeDictEntry;
+use super::schema::tei::FreeDictEntry;
 
 pub struct FreeDictConverter {}
 
