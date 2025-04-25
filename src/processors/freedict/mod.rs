@@ -8,7 +8,7 @@ mod schema;
 pub struct FreeDictProcessor {}
 
 impl Processor for FreeDictProcessor {
-    type Entry = schema::tei::FreeDictEntry;
+    type Entry = schema::tei::Entry;
     type Downloader = downloader::FreeDictDownloader;
     type Extractor = extractor::FreeDictExtractor;
     type Converter = converter::FreeDictConverter;

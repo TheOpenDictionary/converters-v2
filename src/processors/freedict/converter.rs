@@ -1,11 +1,10 @@
 use console::Term;
-use indicatif::ProgressBar;
 use map_macro::hash_map;
-use odict::{Definition, Dictionary, Entry, Etymology, ID};
+use odict::{Dictionary, ID};
 
-use crate::{processors::traits::Converter, progress::STYLE_PROGRESS};
+use crate::processors::traits::Converter;
 
-use super::schema::tei::FreeDictEntry;
+use super::schema::tei::Entry as FreeDictEntry;
 
 pub struct FreeDictConverter {}
 
