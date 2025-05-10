@@ -8,6 +8,7 @@ use utils::save_dictionary;
 
 mod args;
 mod commands;
+mod frequency;
 mod processors;
 mod progress;
 mod utils;

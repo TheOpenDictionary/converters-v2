@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{processors::traits::Converter, progress::STYLE_PROGRESS};
+use crate::{frequency::FrequencyMap, processors::traits::Converter, progress::STYLE_PROGRESS};
 use console::Term;
 use map_macro::hash_map;
 use odict::{
@@ -37,7 +37,12 @@ impl WiktionaryConverter {
 impl Converter for WiktionaryConverter {
     type Entry = WiktionaryEntry;
 
-    fn convert(&mut self, term: &Term, data: &Vec<WiktionaryEntry>) -> anyhow::Result<Dictionary> {
+    fn convert(
+        &mut self,
+        term: &Term,
+        frequency_map: &Option<FrequencyMap>,
+        data: &Vec<WiktionaryEntry>,
+    ) -> anyhow::Result<Dictionary> {
         term.write_line("🔄 Converting the dictionary...")?;
 
         self.missing_pos = vec![];
@@ -53,19 +58,22 @@ impl Converter for WiktionaryConverter {
             let term = entry.word.to_owned();
             let see_also = entry.redirects.as_ref().map(|r| r[0].to_owned());
             let etymology_text = entry.etymology_text.to_owned();
-            let forms = entry
-                .forms
-                .iter()
-                .map(|form| Form {
-                    term: form.form.to_owned().into(),
-                    kind: None,
-                })
-                .collect::<Vec<_>>();
 
             let mut definitions: Vec<DefinitionType> = vec![];
             let mut group_map: HashMap<String, usize> = hash_map! {};
 
+            let mut lemma: Option<EntryRef> = None;
+            let mut tags: Vec<String> = vec![];
+
             for sense in &entry.senses {
+                tags.extend(sense.tags.iter().cloned());
+
+                if sense.form_of.len() > 0 {
+                    if let Some(fo) = &sense.form_of.get(0) {
+                        lemma = Some(EntryRef::from(fo.word.to_owned()));
+                    }
+                }
+
                 // Glosses with 2 senses typically have subdefinitions
                 if sense.glosses.len() == 2 {
                     let parent = sense.glosses[0].to_owned();
@@ -108,8 +116,22 @@ impl Converter for WiktionaryConverter {
 
             let etymology_number = entry.etymology_number.unwrap_or(1);
 
+            let forms = entry
+                .forms
+                .iter()
+                .map(|f| Form {
+                    kind: None,
+                    term: EntryRef::from(f.form.to_owned()),
+                    tags: f.tags.to_owned(),
+                })
+                .collect();
+
             let sense = Sense {
                 pos: pos.to_owned(),
+                lemma: lemma.to_owned(),
+                tags,
+                translations: vec![],
+                forms,
                 definitions: definitions.to_owned(),
             };
 
@@ -125,7 +147,7 @@ impl Converter for WiktionaryConverter {
             } else {
                 let ety = Etymology {
                     id: None,
-                    pronunciation: None,
+                    pronunciations: vec![],
                     description: etymology_text.to_owned(),
                     senses: hash_map! {
                         pos.to_owned() => sense,
@@ -138,8 +160,7 @@ impl Converter for WiktionaryConverter {
                     let entry = Entry {
                         etymologies: vec![ety],
                         term: term.to_owned(),
-                        forms,
-                        lemma: None,
+                        media: vec![],
                         see_also: see_also.map(|s| EntryRef::from(s)),
                     };
 

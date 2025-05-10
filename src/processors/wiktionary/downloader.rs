@@ -17,13 +17,15 @@ impl Downloader for WiktionaryDownloader {
         )
     }
 
-    fn new(language: Option<String>) -> anyhow::Result<Self>
+    fn new(language: &Option<String>) -> anyhow::Result<Self>
     where
         Self: Sized,
     {
         if let Some(lang) = language {
             if SUPPORTED_LANGUAGES.contains_key(lang.as_str()) {
-                Ok(Self { language: lang })
+                Ok(Self {
+                    language: lang.clone(),
+                })
             } else {
                 anyhow::bail!("Unsupported language: {}", lang);
             }

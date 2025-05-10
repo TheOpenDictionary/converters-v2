@@ -4,7 +4,7 @@ use rayon::prelude::*;
 use regex::Regex;
 use std::io::{Cursor, Read};
 
-use crate::{processors::traits::Extractor, progress::STYLE_PROGRESS};
+use crate::{processors::traits::Extractor, progress::STYLE_PROGRESS, utils::decompress_gzip};
 
 use super::schema::CEDictEntry;
 
@@ -16,10 +16,7 @@ impl Extractor for CEDictExtractor {
     fn extract(&self, term: &Term, data: &Vec<u8>) -> anyhow::Result<Vec<CEDictEntry>> {
         term.write_line("🔍 Extracting the dictionary...")?;
 
-        // First, we need to decompress the gzipped data
-        let mut decoder = GzDecoder::new(Cursor::new(data));
-        let mut decompressed = String::new();
-        decoder.read_to_string(&mut decompressed)?;
+        let decompressed = String::from_utf8(decompress_gzip(data)?)?;
 
         let lines: Vec<_> = decompressed
             .lines()

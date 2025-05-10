@@ -2,9 +2,12 @@ use std::collections::HashMap;
 
 use console::Term;
 use map_macro::hash_map;
-use odict::{Definition, DefinitionType, Dictionary, Entry, Etymology, ID, PartOfSpeech, Sense};
+use odict::{
+    Definition, DefinitionType, Dictionary, Entry, Etymology, Form, FormKind, ID, PartOfSpeech,
+    Pronunciation, Sense,
+};
 
-use crate::{processors::traits::Converter, progress::STYLE_PROGRESS};
+use crate::{frequency::FrequencyMap, processors::traits::Converter, progress::STYLE_PROGRESS};
 
 use super::schema::CEDictEntry;
 
@@ -13,7 +16,12 @@ pub struct CEDictConverter {}
 impl Converter for CEDictConverter {
     type Entry = CEDictEntry;
 
-    fn convert(&mut self, term: &Term, data: &Vec<CEDictEntry>) -> anyhow::Result<Dictionary> {
+    fn convert(
+        &mut self,
+        term: &Term,
+        frequency_map: &Option<FrequencyMap>,
+        data: &Vec<CEDictEntry>,
+    ) -> anyhow::Result<Dictionary> {
         term.write_line("🔄 Converting the dictionary...")?;
 
         let progress = indicatif::ProgressBar::new(data.len() as u64);
@@ -31,12 +39,14 @@ impl Converter for CEDictConverter {
 
             // Create forms for traditional characters if different from simplified
             let mut forms = vec![];
-            // if traditional != simplified {
-            //     forms.push(Form {
-            //         term: traditional.into(),
-            //         kind: Some("traditional".to_string()),
-            //     });
-            // }
+
+            if traditional != simplified {
+                forms.push(Form {
+                    tags: vec![],
+                    term: traditional.into(),
+                    kind: Some(FormKind::Other),
+                });
+            }
 
             // Create definitions
             let definitions = cedict_entry
@@ -54,6 +64,10 @@ impl Converter for CEDictConverter {
 
             // Create sense with noun part of speech (CEDict doesn't specify POS)
             let sense = Sense {
+                lemma: None,
+                tags: vec![],
+                translations: vec![],
+                forms,
                 pos: PartOfSpeech::n, // Default to noun as most entries are nouns
                 definitions,
             };
@@ -61,7 +75,11 @@ impl Converter for CEDictConverter {
             // Create etymology with pronunciation
             let ety = Etymology {
                 id: None,
-                pronunciation: Some(pronunciation),
+                pronunciations: vec![Pronunciation {
+                    value: pronunciation.clone(),
+                    kind: odict::PronunciationKind::Pinyin,
+                    media: vec![],
+                }],
                 description: None,
                 senses: hash_map! {
                     PartOfSpeech::n => sense,
@@ -70,10 +88,9 @@ impl Converter for CEDictConverter {
 
             // Add entry
             let entry = Entry {
+                media: vec![],
                 etymologies: vec![ety],
                 term: simplified.clone(),
-                forms,
-                lemma: None,
                 see_also: None,
             };
 

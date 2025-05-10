@@ -1,16 +1,17 @@
+use std::path::PathBuf;
+
 use async_trait::async_trait;
 use console::Term;
 use odict::Dictionary;
-use sha2::{Digest, Sha256};
-use std::fs::{self, File};
-use std::io::{Read, Write};
-use std::path::PathBuf;
 
-use crate::progress::STYLE_DOWNLOAD;
+use crate::{
+    frequency::FrequencyMap,
+    utils::{download_with_progress, hash_url, read_file, write_file},
+};
 
 #[async_trait(?Send)]
 pub trait Downloader {
-    fn new(language: Option<String>) -> anyhow::Result<Self>
+    fn new(language: &Option<String>) -> anyhow::Result<Self>
     where
         Self: Sized;
 
@@ -18,68 +19,28 @@ pub trait Downloader {
 
     async fn download(&self, term: &Term) -> anyhow::Result<Vec<u8>> {
         let url = self.url();
+        let file_path = PathBuf::from(".data").join(&hash_url(&url));
 
-        // Create .data directory if it doesn't exist
-        let data_dir = PathBuf::from(".data");
+        let content = match read_file(&file_path)? {
+            Some(content) => {
+                term.write_line(
+                    format!("✅ Using cached dictionary from {}", file_path.display()).as_str(),
+                )?;
+                content
+            }
+            None => {
+                term.write_line(format!("⬇️ Downloading the dictionary from {}...", url).as_str())?;
 
-        if !data_dir.exists() {
-            fs::create_dir_all(&data_dir)?;
-        }
+                let content = download_with_progress(&url, &file_path).await?;
 
-        // Create a filename based on URL hash
-        let mut hasher = Sha256::new();
+                term.clear_line()?;
+                term.write_line("✅ Download complete")?;
 
-        hasher.update(url.as_bytes());
+                write_file(&file_path, &content)?;
 
-        let filename = format!("{:x}", hasher.finalize());
-        let file_path = data_dir.join(&filename);
-
-        // If file exists, read and return it
-        if file_path.exists() {
-            term.write_line(
-                format!("✅ Using cached dictionary from {}", file_path.display()).as_str(),
-            )?;
-
-            let mut file = File::open(&file_path)?;
-            let mut content = Vec::new();
-
-            file.read_to_end(&mut content)?;
-
-            return Ok(content);
-        }
-
-        let mut response = reqwest::get(&url).await?;
-
-        if !response.status().is_success() {
-            anyhow::bail!("Failed to download file: {}", response.status());
-        }
-
-        let total_size = response.content_length().unwrap_or(0);
-
-        term.write_line(format!("⬇️ Downloading the dictionary from {}...", url).as_str())?;
-
-        let pb = indicatif::ProgressBar::new(total_size);
-
-        pb.set_style(STYLE_DOWNLOAD.clone());
-
-        // Download chunks and update progress bar
-        let mut downloaded: u64 = 0;
-        let mut content = Vec::new();
-
-        while let Some(chunk) = response.chunk().await? {
-            content.extend_from_slice(&chunk);
-            downloaded = std::cmp::min(downloaded + (chunk.len() as u64), total_size);
-            pb.set_position(downloaded);
-        }
-
-        pb.finish_and_clear();
-
-        term.clear_line()?;
-        term.write_line("✅ Download complete")?;
-
-        // Cache the downloaded content
-        let mut file = File::create(&file_path)?;
-        file.write_all(&content)?;
+                content
+            }
+        };
 
         Ok(content)
     }
@@ -102,7 +63,12 @@ pub trait Converter {
     where
         Self: Sized;
 
-    fn convert(&mut self, term: &Term, data: &Vec<Self::Entry>) -> anyhow::Result<Dictionary>;
+    fn convert(
+        &mut self,
+        term: &Term,
+        frequency_map: &Option<FrequencyMap>,
+        data: &Vec<Self::Entry>,
+    ) -> anyhow::Result<Dictionary>;
 }
 
 pub trait Processor {
@@ -117,13 +83,18 @@ pub trait Processor {
         Self: Sized;
 
     async fn process(&self, term: &Term, language: Option<String>) -> anyhow::Result<Dictionary> {
-        let downloader = Self::Downloader::new(language)?;
+        let downloader = Self::Downloader::new(&language)?;
         let extractor = Self::Extractor::new()?;
         let mut converter = Self::Converter::new()?;
 
+        let frequency_map = match language {
+            Some(lang) => FrequencyMap::new(&lang, term).await?,
+            None => None,
+        };
+
         let data = downloader.download(term).await?;
         let parsed = extractor.extract(term, &data)?;
-        let dictionary = converter.convert(term, &parsed)?;
+        let dictionary = converter.convert(term, &frequency_map, &parsed)?;
 
         Ok(dictionary)
     }

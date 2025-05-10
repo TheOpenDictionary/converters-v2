@@ -8,6 +8,7 @@ pub const SUPPORTED_LANGUAGES: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| 
         "fra" => "French",
         "ger" => "German",
         "ita" => "Italian",
+        "por" => "Portuguese",
         "pol" => "Polish",
         "spa" => "Spanish",
         "swe" => "Swedish",
