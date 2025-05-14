@@ -56,7 +56,14 @@ pub trait Downloader {
 
         let total_size = response.content_length().unwrap_or(0);
 
-        term.write_line(format!("⬇️ Downloading the dictionary from {}...", url).as_str())?;
+        term.write_line(
+            format!(
+                "⬇️ Downloading the dictionary from {} to {}...",
+                url,
+                file_path.display()
+            )
+            .as_str(),
+        )?;
 
         let pb = indicatif::ProgressBar::new(total_size);
 
@@ -102,7 +109,12 @@ pub trait Converter {
     where
         Self: Sized;
 
-    fn convert(&mut self, term: &Term, data: &Vec<Self::Entry>) -> anyhow::Result<Dictionary>;
+    fn convert(
+        &mut self,
+        term: &Term,
+        data: &Vec<Self::Entry>,
+        language: Option<String>,
+    ) -> anyhow::Result<Dictionary>;
 }
 
 pub trait Processor {
@@ -117,13 +129,13 @@ pub trait Processor {
         Self: Sized;
 
     async fn process(&self, term: &Term, language: Option<String>) -> anyhow::Result<Dictionary> {
-        let downloader = Self::Downloader::new(language)?;
+        let downloader = Self::Downloader::new(language.clone())?;
         let extractor = Self::Extractor::new()?;
         let mut converter = Self::Converter::new()?;
 
         let data = downloader.download(term).await?;
         let parsed = extractor.extract(term, &data)?;
-        let dictionary = converter.convert(term, &parsed)?;
+        let dictionary = converter.convert(term, &parsed, language)?;
 
         Ok(dictionary)
     }

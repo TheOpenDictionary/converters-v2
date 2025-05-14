@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use console::Term;
 use map_macro::hash_map;
-use odict::{Definition, DefinitionType, Dictionary, Entry, Etymology, ID, PartOfSpeech, Sense};
+use odict::{
+    Definition, DefinitionType, Dictionary, Entry, Etymology, ID, PartOfSpeech, Pronunciation,
+    PronunciationKind, Sense,
+};
 
 use crate::{processors::traits::Converter, progress::STYLE_PROGRESS};
 
@@ -13,7 +16,12 @@ pub struct CEDictConverter {}
 impl Converter for CEDictConverter {
     type Entry = CEDictEntry;
 
-    fn convert(&mut self, term: &Term, data: &Vec<CEDictEntry>) -> anyhow::Result<Dictionary> {
+    fn convert(
+        &mut self,
+        term: &Term,
+        data: &Vec<CEDictEntry>,
+        _language: Option<String>,
+    ) -> anyhow::Result<Dictionary> {
         term.write_line("🔄 Converting the dictionary...")?;
 
         let progress = indicatif::ProgressBar::new(data.len() as u64);
@@ -27,7 +35,11 @@ impl Converter for CEDictConverter {
 
             let simplified = cedict_entry.simplified.clone();
             let traditional = cedict_entry.traditional.clone();
-            let pronunciation = cedict_entry.pronunciation.clone();
+            let pronunciation = Pronunciation {
+                kind: PronunciationKind::Pinyin,
+                value: cedict_entry.pronunciation.clone(),
+                media: Vec::new(),
+            };
 
             // Create forms for traditional characters if different from simplified
             let mut forms = vec![];
@@ -56,25 +68,29 @@ impl Converter for CEDictConverter {
             let sense = Sense {
                 pos: PartOfSpeech::n, // Default to noun as most entries are nouns
                 definitions,
+                lemma: None,
+                tags: Vec::new(),
+                translations: Vec::new(),
+                forms,
             };
 
             // Create etymology with pronunciation
             let ety = Etymology {
                 id: None,
-                pronunciation: Some(pronunciation),
                 description: None,
                 senses: hash_map! {
                     PartOfSpeech::n => sense,
                 },
+                pronunciations: vec![pronunciation],
             };
 
             // Add entry
             let entry = Entry {
-                etymologies: vec![ety],
                 term: simplified.clone(),
-                forms,
-                lemma: None,
+                rank: None,
+                etymologies: vec![ety],
                 see_also: None,
+                media: Vec::new(),
             };
 
             entries.insert(simplified, entry);
