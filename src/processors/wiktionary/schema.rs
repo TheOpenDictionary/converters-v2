@@ -68,7 +68,7 @@ pub struct WiktionaryEntry {
     pub coordinate_terms: Vec<WordLink>,
     /// Non-disambiguated Wikidata identifier
     #[serde(default)]
-    pub wikidata: Option<String>,
+    pub wikidata: Vec<String>,
     /// Non-disambiguated Wikipedia page title
     #[serde(default)]
     pub wikipedia: Option<Vec<String>>,
@@ -224,7 +224,8 @@ pub struct Translation {
     #[serde(default)]
     pub alt: Option<String>,
     /// Wiktionary language code
-    pub code: String,
+    #[serde(default)]
+    pub code: Option<String>,
     /// English text clarifying the target sense
     #[serde(default)]
     pub english: Option<String>,

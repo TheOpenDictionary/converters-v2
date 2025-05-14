@@ -26,7 +26,7 @@ pub fn save_dictionary(
     }
 
     spinner.enable_steady_tick(Duration::from_millis(100));
-    spinner.set_message("Writing the dictionary to file (this might take awhile)...");
+    spinner.set_message("Writing the dictionary to file (this might take a while)...");
 
     writer.write_to_path(&dictionary, &output_path).unwrap();
 
