@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::PathBuf};
 use console::Term;
 use isolang::Language;
 
-use crate::utils::{decompress_gzip, download_with_progress, hash_url, read_file, write_file};
+use crate::utils::{decompress_gzip, download_with_progress, hash_url, read_file};
 
 pub struct FrequencyMap {
     map: HashMap<String, u32>,
@@ -51,8 +51,6 @@ impl FrequencyMap {
 
                     term.clear_line()?;
                     term.write_line("✅ Download complete")?;
-
-                    write_file(&file_path, &content)?;
 
                     content
                 }

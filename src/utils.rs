@@ -68,9 +68,7 @@ pub async fn download_with_progress(url: &str, output_path: &PathBuf) -> anyhow:
     pb.finish_and_clear();
 
     // Cache the downloaded content
-    let mut file = File::create(&output_path)?;
-
-    file.write_all(&content)?;
+    write_file(output_path, &content)?;
 
     Ok(content)
 }
