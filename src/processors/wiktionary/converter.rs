@@ -211,10 +211,12 @@ impl Converter for WiktionaryConverter {
                 if let Some(entry) = entries.get_mut(term.as_str()) {
                     entry.etymologies.push(ety);
                 } else {
+                    let rank = frequency_map.as_ref().and_then(|m| m.get_frequency(&term));
+
                     let entry = Entry {
                         etymologies: vec![ety],
                         term: term.to_owned(),
-                        rank: frequency_map.as_ref().and_then(|m| m.get_frequency(&term)),
+                        rank,
                         media: vec![],
                         see_also: see_also.map(|s| EntryRef::from(s)),
                     };

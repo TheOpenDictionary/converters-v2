@@ -8,4 +8,11 @@ pub enum Commands {
     Wiktionary(WiktionaryArgs),
     #[command(name = "cedict")]
     CEDict,
+    #[command(name = "test-freq")]
+    TestFrequency {
+        #[arg(help = "Language code (e.g., cmn for Chinese)")]
+        language: String,
+        #[arg(help = "Word to test frequency for")]
+        word: String,
+    },
 }
